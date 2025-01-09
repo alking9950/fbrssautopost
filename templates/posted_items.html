@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Posted Items</h1>
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-filter"></i> Filter
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ url_for('posted_items', source='all') }}">All Items</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('posted_items', source='rss') }}">RSS Feeds Only</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('posted_items', source='custom') }}">Custom Posts Only</a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Search and Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input type="text" class="form-control" name="search" value="{{ request.args.get('search', '') }}"
+                       placeholder="Search in title or content">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date From</label>
+                <input type="date" class="form-control" name="date_from" value="{{ request.args.get('date_from', '') }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date To</label>
+                <input type="date" class="form-control" name="date_to" value="{{ request.args.get('date_to', '') }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Stats Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Total Posts</h6>
+                <h3 class="mb-0">{{ stats.total_posts }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Posts Today</h6>
+                <h3 class="mb-0">{{ stats.posts_today }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">RSS Posts</h6>
+                <h3 class="mb-0">{{ stats.rss_posts }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">Custom Posts</h6>
+                <h3 class="mb-0">{{ stats.custom_posts }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Posted Items List -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Posted Items</h5>
+        <span class="text-muted">Showing {{ items|length }} items</span>
+    </div>
+    <div class="card-body">
+        {% if items %}
+            {% for item in items %}
+                <div class="post-item mb-4 p-3 border rounded">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h5 class="mb-1">{{ item.title or 'Untitled Post' }}</h5>
+                                    <p class="text-muted mb-0">
+                                        Posted {{ item.posted_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% if item.source_type == 'rss' %}
+                                            via <span class="badge bg-info">{{ item.feed_name or 'RSS Feed' }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Custom Post</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                {% if item.facebook_post_id %}
+                                    <a href="https://facebook.com/{{ item.facebook_post_id }}" target="_blank" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-facebook"></i> View on Facebook
+                                    </a>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="post-content mb-3">{{ item.content|truncate(300) }}</div>
+                            
+                            {% if item.media_url %}
+                                <div class="mb-3">
+                                    {% if item.media_type == 'image' %}
+                                        <img src="{{ item.media_url }}" class="img-thumbnail" style="max-height: 150px;">
+                                    {% else %}
+                                        <div class="d-flex align-items-center text-muted">
+                                            <i class="bi bi-film me-2"></i> Video content
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if item.link %}
+                                <a href="{{ item.link }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-box-arrow-up-right"></i> View Source
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {{ 'disabled' if pagination.page == 1 }}">
+                            <a class="page-link" href="{{ url_for('posted_items', page=pagination.page-1, **request.args) }}">Previous</a>
+                        </li>
+                        {% for p in range(1, pagination.pages + 1) %}
+                            <li class="page-item {{ 'active' if p == pagination.page }}">
+                                <a class="page-link" href="{{ url_for('posted_items', page=p, **request.args) }}">{{ p }}</a>
+                            </li>
+                        {% endfor %}
+                        <li class="page-item {{ 'disabled' if pagination.page == pagination.pages }}">
+                            <a class="page-link" href="{{ url_for('posted_items', page=pagination.page+1, **request.args) }}">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <h3 class="mt-3">No Items Found</h3>
+                <p class="text-muted">No posted items match your filters</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+*.db
+*.sqlite3
+autoposter.db
+autoposter.log
+migrations/
+instance/
+logs/
+
+# Flask
+flask_session/
+.webassets-cache/
+
+# APScheduler
+*.sqlite
+*.sqlite-journal
+
+# Misc
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Local development
+.env.local
+.env.development
+.env.test
+.env.production 

@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Preview Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0">{{ feed.name or feed.url }}</h1>
+        <p class="text-muted mb-0">{{ feed.url }}</p>
+    </div>
+    <div class="btn-group">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-icon">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+        <button class="btn btn-outline-primary btn-icon" onclick="refreshFeed({{ feed.id }})">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Feed
+        </button>
+        {% if status.is_autoposting %}
+            <button class="btn btn-danger btn-icon toggle-autopost" 
+                    data-feed-id="{{ feed.id }}"
+                    onclick="toggleAutopost({{ feed.id }})">
+                <i class="bi bi-pause-circle"></i> Stop Auto-Posting
+            </button>
+        {% else %}
+            <button class="btn btn-primary btn-icon toggle-autopost" 
+                    data-feed-id="{{ feed.id }}"
+                    onclick="toggleAutopost({{ feed.id }})">
+                <i class="bi bi-play-circle"></i> Start Auto-Posting
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Feed Status -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Feed Status</h5>
+    </div>
+    <div class="card-body">
+        <div class="feed-stats">
+            <div class="stat-card">
+                <div class="label">Posts Today</div>
+                <div class="value">{{ status.posts_today }}/{{ status.max_posts }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Posting Window</div>
+                <div class="value">{{ status.window_start }} - {{ status.window_end }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Auto-Posting</div>
+                <div class="value">
+                    {% if status.is_autoposting %}
+                        <span class="text-success">Active</span>
+                    {% else %}
+                        <span class="text-secondary">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Status</div>
+                <div class="value">
+                    {% if status.can_post_more and status.is_within_window %}
+                        <span class="text-success">Ready to Post</span>
+                    {% else %}
+                        {% if not status.can_post_more %}
+                            <span class="text-warning">Daily Limit Reached</span>
+                        {% elif not status.is_within_window %}
+                            <span class="text-info">Outside Window</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feed Settings -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Feed Settings</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('update_feed_settings', feed_id=feed.id) }}" method="post">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="mb-3">Posting Controls</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Post Order</label>
+                        <select class="form-select" name="post_order">
+                            <option value="newest" {% if feed.post_order == 'newest' %}selected{% endif %}>Newest First</option>
+                            <option value="oldest" {% if feed.post_order == 'oldest' %}selected{% endif %}>Oldest First</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Maximum Posts per Day</label>
+                        <input type="number" class="form-control" name="max_posts_per_day"
+                               value="{{ feed.max_posts_per_day }}" min="1" max="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Minimum Interval Between Posts (seconds)</label>
+                        <input type="number" class="form-control" name="min_interval_between_posts"
+                               value="{{ feed.min_interval_between_posts }}" min="300">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-3">Time Window</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">Start Hour (0-23)</label>
+                                <input type="number" class="form-control" name="posting_window_start"
+                                       value="{{ feed.posting_window_start }}" min="0" max="23">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">End Hour (0-23)</label>
+                                <input type="number" class="form-control" name="posting_window_end"
+                                       value="{{ feed.posting_window_end }}" min="0" max="23">
+                            </div>
+                        </div>
+                    </div>
+                    <h6 class="mb-3">Content Controls</h6>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="include_title"
+                               id="include_title" {% if feed.include_title %}checked{% endif %}>
+                        <label class="form-check-label" for="include_title">Include Title</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="include_description"
+                               id="include_description" {% if feed.include_description %}checked{% endif %}>
+                        <label class="form-check-label" for="include_description">Include Description</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" name="include_link"
+                               id="include_link" {% if feed.include_link %}checked{% endif %}>
+                        <label class="form-check-label" for="include_link">Include Link</label>
+                    </div>
+                    
+                    <h6 class="mb-3">Media Controls</h6>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="include_media"
+                               id="include_media" {% if feed.include_media %}checked{% endif %}>
+                        <label class="form-check-label" for="include_media">Include Media</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="extract_youtube"
+                               id="extract_youtube" {% if feed.extract_youtube %}checked{% endif %}>
+                        <label class="form-check-label" for="extract_youtube">Extract YouTube Videos</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="extract_twitter"
+                               id="extract_twitter" {% if feed.extract_twitter %}checked{% endif %}>
+                        <label class="form-check-label" for="extract_twitter">Extract Twitter Videos</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="extract_tiktok"
+                               id="extract_tiktok" {% if feed.extract_tiktok %}checked{% endif %}>
+                        <label class="form-check-label" for="extract_tiktok">Extract TikTok Videos</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" name="extract_images"
+                               id="extract_images" {% if feed.extract_images %}checked{% endif %}>
+                        <label class="form-check-label" for="extract_images">Extract Images</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" name="prefer_video"
+                               id="prefer_video" {% if feed.prefer_video %}checked{% endif %}>
+                        <label class="form-check-label" for="prefer_video">Prefer Video Over Images</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6 class="mb-3">Content Filtering</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Required Keywords (comma-separated)</label>
+                        <input type="text" class="form-control" name="required_keywords"
+                               value="{{ feed.required_keywords or '' }}"
+                               placeholder="e.g., important, news">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Excluded Keywords (comma-separated)</label>
+                        <input type="text" class="form-control" name="excluded_keywords"
+                               value="{{ feed.excluded_keywords or '' }}"
+                               placeholder="e.g., spam, ads">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-3">Custom Text</h6>
+                    <div class="mb-3">
+                        <label class="form-label">Custom Prefix</label>
+                        <input type="text" class="form-control" name="custom_prefix"
+                               value="{{ feed.custom_prefix or '' }}"
+                               placeholder="Text to add before each post">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Custom Suffix</label>
+                        <input type="text" class="form-control" name="custom_suffix"
+                               value="{{ feed.custom_suffix or '' }}"
+                               placeholder="Text to add after each post">
+                    </div>
+                </div>
+            </div>
+            <div class="text-end mt-3">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Feed Items -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Recent Items</h5>
+        <span class="text-muted">Showing {{ items|length }} items</span>
+    </div>
+    <div class="card-body">
+        {% if items %}
+            {% for item in items %}
+                <div class="feed-item">
+                    <div class="title">{{ item.title }}</div>
+                    <div class="description">{{ item.description|striptags|truncate(200) }}</div>
+                    <div class="meta">
+                        <span><i class="bi bi-clock"></i> {{ item.published }}</span>
+                        <a href="{{ item.link }}" target="_blank" class="text-decoration-none">
+                            <i class="bi bi-box-arrow-up-right"></i> View Source
+                        </a>
+                    </div>
+                    <div class="mt-3">
+                        <form action="{{ url_for('post_to_facebook') }}" method="post" class="d-inline">
+                            <input type="hidden" name="feed_id" value="{{ feed.id }}">
+                            <input type="hidden" name="title" value="{{ item.title }}">
+                            <input type="hidden" name="description" value="{{ item.description|striptags }}">
+                            <input type="hidden" name="link" value="{{ item.link }}">
+                            <input type="hidden" name="guid" value="{{ item.id }}">
+                            <button type="submit" class="btn btn-primary btn-sm btn-icon"
+                                    {% if not status.can_post_more or not status.is_within_window %}disabled{% endif %}>
+                                <i class="bi bi-facebook"></i> Post to Facebook
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <h3 class="mt-3">No Items Found</h3>
+                <p class="text-muted">No items available in this feed</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAutopost(feedId) {
+    fetch(`/feed/${feedId}/autopost`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'started' || data.status === 'stopped') {
+            location.reload();
+        } else {
+            alert(data.message || 'Error toggling auto-post');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error toggling auto-post');
+    });
+}
+
+function refreshFeed(feedId) {
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
+    // Disable button and show loading state
+    button.disabled = true;
+    icon.className = 'bi bi-arrow-clockwise spin';
+    
+    fetch(`/feed/${feedId}/refresh`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Error refreshing feed');
+            // Reset button state
+            button.disabled = false;
+            icon.className = 'bi bi-arrow-clockwise';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error refreshing feed');
+        // Reset button state
+        button.disabled = false;
+        icon.className = 'bi bi-arrow-clockwise';
+    });
+}
+</script>
+
+<style>
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+</style>
+{% endblock %} 
